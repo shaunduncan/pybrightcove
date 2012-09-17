@@ -86,9 +86,11 @@ class FTPVideoTest(unittest.TestCase):
         valid_xml = minidom.parse(
             open(os.path.join(os.path.dirname(__file__), 'test_ftp_video_batch_provision_manifest.xml'), 'rb'))
         try:
+            # From commit logs, this may cause an IndexError
             test_xml = minidom.parseString(fd.method_calls[2][1][0])
         except IndexError:
             test_xml = minidom.parseString(fd.method_calls[0][1][0])
+
         self.assertEqual(
             valid_xml.toxml().replace('\t', '').replace('\n', ''),
             test_xml.toxml().replace('\t', '').replace('\n', ''))
