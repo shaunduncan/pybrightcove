@@ -63,6 +63,7 @@ class Connection(object):
             default='http://api.brightcove.com/services/library', **kwargs)
         self._set('write_url',
             default='http://api.brightcove.com/services/post', **kwargs)
+        self._set('timeout_retry', default=3, **kwargs)
 
         # FTP Connection
         self._set('host', default='upload.brightcove.com', **kwargs)
@@ -227,8 +228,16 @@ class APIConnection(Connection):
         data = simplejson.loads(req.read())
         self._api_raw_data = data
         if data and data.get('error', None):
-            exceptions.BrightcoveError.raise_exception(
-                data['error'])
+            retries = kwargs.get('retries', getattr(self, 'timeout_retry', 3)) - 1
+
+            # Timeout Retry
+            error_code = data.get('error', {}).get('code', -1)
+            error_cls = exceptions.ERROR_MAP.get(error_code, exceptions.BrightcoveError)
+            if error_cls == exceptions.CallTimeoutError and retries > 0:
+                kwargs['retries'] = retries
+                return self._get_response(**kwargs)
+            else:
+                exceptions.BrightcoveError.raise_exception(data['error'])
         if data == None:
             raise exceptions.NoDataFoundError(
                 "No data found for %s" % repr(kwargs))
